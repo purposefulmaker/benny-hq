@@ -123,7 +123,7 @@ textarea{width:100%;min-height:86px;font:inherit;font-size:16px;padding:12px;bor
 .thumbs.flush{padding:0 0 10px}
 .thumb{width:84px;height:84px;object-fit:cover;border-radius:10px;background:var(--line);flex:none;cursor:pointer}
 
-nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{background:none;border:0;padding:8px 0 10px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
 nav.tabs button b{font-size:22px;line-height:1}
 nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
@@ -232,8 +232,10 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
       <details class="grp" data-grp="groomer"><summary>✂️ Groomer</summary><div class="in" id="groomerBox"></div></details>
       <details class="grp" data-grp="money"><summary>☎️ Help &amp; money</summary><div class="in"><ul id="contacts"></ul></div></details>
       <details class="grp" data-grp="keys"><summary>🔑 Keys</summary><div class="in"><p>Keys to the lodge and the house are with you. The white truck keys are here too.</p></div></details>
-      <p class="muted center">Signed in on this device. <button class="linkbtn" id="signOut" type="button">Sign out</button></p>
-      <p class="center"><button class="btn small ghost" id="adminOpen" type="button">🔧 John's admin</button></p>
+      <div class="rowbtns" style="justify-content:center;margin:18px 0">
+        <button class="btn small ghost" id="signOut" type="button">🔒 Sign out</button>
+        <button class="btn small ghost" id="adminOpen" type="button">🔧 John's admin</button>
+      </div>
     </section>
 
     <!-- ADMIN (John only) -->
@@ -246,6 +248,10 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
         <p class="err" id="adminErr"></p>
       </div>
       <div id="adminPanel" class="hidden">
+        <div class="rowbtns" style="margin:12px 0 4px">
+          <button class="btn small" id="admToToday" type="button">✅ Stetson's view</button>
+          <button class="btn small ghost" id="admSignOut" type="button">🔒 Sign out</button>
+        </div>
         <div class="card">
           <h2>Message for Stetson</h2>
           <p class="muted">Shows at the top of his Today screen. Leave empty to hide it.</p>
@@ -293,6 +299,7 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
     <button data-tab="jobs" type="button"><b>🧰</b>Jobs</button>
     <button data-tab="help" type="button"><b>📍</b>Help</button>
     <button data-tab="log" type="button"><b>📅</b>Log</button>
+    <button data-tab="admin" type="button" id="navAdmin" class="hidden"><b>🔧</b>Admin</button>
   </nav>
 </div>
 
@@ -814,7 +821,7 @@ function adminFn(body) {
   }, function () { var e = new Error('no connection'); e.offline = true; throw e; });
 }
 function adminFail(e, where) {
-  if (e.badAdmin || e.badPin || e.status === 403) { ADMIN = null; store.del('admin'); lastKey = null; render(); $('#adminErr').textContent = 'Admin code stopped working. Enter it again.'; return; }
+  if (e.badAdmin || e.badPin || e.status === 403) { ADMIN = null; store.del('admin'); lastKey = null; updateNav(); render(); $('#adminErr').textContent = 'Admin code stopped working. Enter it again.'; return; }
   var msg = e.offline ? 'No connection. Try again.' : e.message;
   if (/exceed|too large|maximum allowed size|payload/i.test(msg)) msg = 'That file is too big to upload here. Trim it, or put it on YouTube (unlisted) and paste the link below.';
   toast((where || 'Not saved') + ': ' + msg);
@@ -890,13 +897,24 @@ function setTab(t) {
 }
 
 /* ---------- sign-in ---------- */
-function showPin() { $('#pinScreen').classList.remove('hidden'); $('#app').classList.add('hidden'); setTimeout(function () { $('#pinInput').focus(); }, 50); }
-function showApp() { $('#pinScreen').classList.add('hidden'); $('#app').classList.remove('hidden'); setTab(tab); maybeHint(); }
-function signOut(msg) { PIN = null; store.del('pin'); lastKey = null; showPin(); $('#pinErr').textContent = msg || ''; }
+function updateNav() { $('#navAdmin').classList.toggle('hidden', !ADMIN); }
+function showPin() {
+  $('#pinScreen').classList.remove('hidden'); $('#app').classList.add('hidden');
+  $('#pinInput').value = '';
+  setTimeout(function () { $('#pinInput').focus(); }, 50);
+}
+function showApp() { $('#pinScreen').classList.add('hidden'); $('#app').classList.remove('hidden'); updateNav(); setTab(tab); maybeHint(); }
+function signOut(msg) {
+  PIN = null; ADMIN = null; store.del('pin'); store.del('admin');
+  lastKey = null; tab = 'today'; johnMedia = [];
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  showPin(); $('#pinErr').textContent = msg || '';
+}
 function tryPin(pin) {
   var go = $('#pinGo'); $('#pinErr').textContent = ''; go.disabled = true; go.textContent = 'Checking…';
   return rpc('sitter_get', { p_pin: pin, p_from: START, p_to: todayYMD() }).then(function (d) {
     PIN = pin; store.set('pin', pin); server = d || server; lastOk = Date.now(); netErr = false;
+    ADMIN = null; store.del('admin'); tab = 'today';
     go.disabled = false; go.textContent = 'Open';
     showApp(); flush(); refresh();
   }, function (e) {
@@ -1004,7 +1022,7 @@ $('#adminGo').addEventListener('click', function () {
   var go = $('#adminGo'); $('#adminErr').textContent = ''; go.disabled = true;
   rpc('sitter_admin_check', { p_code: code }).then(function (ok) {
     go.disabled = false;
-    if (ok === true) { ADMIN = code; store.set('admin', code); $('#adminCode').value = ''; lastKey = null; render(); }
+    if (ok === true) { ADMIN = code; store.set('admin', code); $('#adminCode').value = ''; lastKey = null; updateNav(); render(); }
     else $('#adminErr').textContent = "That code didn't work.";
   }, function (e) { go.disabled = false; $('#adminErr').textContent = e.offline ? 'No connection. Try again.' : 'Admin is not ready yet (' + e.message + ').'; });
 });
@@ -1031,7 +1049,9 @@ $('#admLinkAdd').addEventListener('click', function () {
   rpc('sitter_admin_media_add', { p_code: ADMIN, p_kind: 'link', p_title: $('#admTitle').value.trim() || 'Video', p_url: u, p_path: null, p_keys: selectedKeys(), p_grp: null })
     .then(function () { resetAddForm(); toast('Added ✓ Stetson will see it.'); return refresh(); }, function (e) { adminFail(e, 'Not added'); });
 });
-$('#admOut').addEventListener('click', function () { ADMIN = null; store.del('admin'); lastKey = null; render(); });
+$('#admOut').addEventListener('click', function () { ADMIN = null; store.del('admin'); lastKey = null; updateNav(); setTab('today'); });
+$('#admToToday').addEventListener('click', function () { setTab('today'); });
+$('#admSignOut').addEventListener('click', function () { ask('Sign out on this phone?', 'Sign out', 'Cancel').then(function (ok) { if (ok) signOut(''); }); });
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && PIN) { refresh(); flush(); loadMedia(); } });
 window.addEventListener('online', function () { if (PIN) { flush(); refresh(); } });
 setInterval(function () { if (PIN && document.visibilityState === 'visible') refresh(); }, 20000);
