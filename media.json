@@ -1,0 +1,87 @@
+{
+  "where": [
+    {
+      "group": "Benny's stuff",
+      "items": [
+        {
+          "t": "Benny's food: Cesar trays (2 per meal)",
+          "u": "refs/dog-food.jpg",
+          "k": [
+            "dogfood"
+          ]
+        },
+        {
+          "t": "Backup dry dog food (Pro Plan)",
+          "u": "refs/dog-dry-backup.jpg",
+          "k": [
+            "dogfood"
+          ]
+        },
+        {
+          "t": "Dog shelf: Greenies + collagen sticks",
+          "u": "refs/dog-treats.jpg",
+          "k": [
+            "treats"
+          ]
+        },
+        {
+          "t": "Cart: Greenies + wipes on top, cat treats in the middle",
+          "u": "refs/benny-cart.jpg",
+          "k": [
+            "treats",
+            "wipes",
+            "cattreats"
+          ]
+        },
+        {
+          "t": "MiconaHex+Triz wipes",
+          "u": "refs/wipes-miconahex.jpg",
+          "k": [
+            "wipes"
+          ]
+        },
+        {
+          "t": "PlaqueOff powder (teeth)",
+          "u": "refs/plaqueoff.jpg",
+          "k": [
+            "teeth"
+          ]
+        }
+      ]
+    },
+    {
+      "group": "Cat stuff",
+      "items": [
+        {
+          "t": "Cat dry food: Tiki Cat bags",
+          "u": "refs/cat-dry-food.jpg",
+          "k": [
+            "catfood"
+          ]
+        },
+        {
+          "t": "Cat cans + squeeze treat (shelf)",
+          "u": "refs/cat-treats.jpg",
+          "k": [
+            "cattreats"
+          ]
+        },
+        {
+          "t": "Cat litter + pads",
+          "u": "refs/cat-litter.jpg",
+          "k": [
+            "litter"
+          ]
+        },
+        {
+          "t": "Litter box",
+          "u": "refs/litter-box.jpg",
+          "k": [
+            "litter"
+          ]
+        }
+      ]
+    }
+  ],
+  "videos": []
+}

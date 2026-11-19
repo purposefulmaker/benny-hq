@@ -361,6 +361,11 @@ var queue = store.get('queue', []);
 var lastOk = null, netErr = false, flushing = false, flushTimer = null;
 var tab = 'today', lastKey = null, noteDirty = false, viewerId = null;
 var openDays = {}, openGroups = {}, photoCache = {};
+var media = { where: [], videos: [] };
+function loadMedia() {
+  return fetch('media.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (m) { if (m && JSON.stringify(m) !== JSON.stringify(media)) { media = m; lastKey = null; render(); } }, function () {});
+}
 
 function checkMap() {
   var m = {};
@@ -373,9 +378,9 @@ function pendingSet() { var s = {}; queue.forEach(function (q) { s[q.day + '|' +
 /* ---------- help media (photos + videos John sends; they live in the server info) ---------- */
 function hit(ks, keys) { return (ks || []).some(function (k) { return keys.indexOf(k) >= 0; }); }
 function mediaFor(keys) {
-  var info = server.info || {}, out = [];
-  (info.videos || []).forEach(function (v) { if (hit(v.k, keys)) out.push({ type: 'video', t: v.t, u: v.u }); });
-  (info.where || []).forEach(function (g) { (g.items || []).forEach(function (p) { if (hit(p.k, keys)) out.push({ type: 'img', t: p.t, u: p.u }); }); });
+  var out = [];
+  (media.videos || []).forEach(function (v) { if (hit(v.k, keys)) out.push({ type: 'video', t: v.t, u: v.u }); });
+  (media.where || []).forEach(function (g) { (g.items || []).forEach(function (p) { if (hit(p.k, keys)) out.push({ type: 'img', t: p.t, u: p.u }); }); });
   return out;
 }
 function hasHelp(t) { return !!(t && t.help && (t.help.indexOf('groomer') >= 0 || mediaFor(t.help).length)); }
@@ -603,14 +608,14 @@ function renderJobs() {
 }
 function renderHelp() {
   var info = server.info || {};
-  $('#whereBox').innerHTML = (info.where || []).map(function (g, gi) {
+  $('#whereBox').innerHTML = (media.where || []).map(function (g, gi) {
     var key = 'where' + gi;
     return '<details class="grp" data-grp="' + key + '"' + (openGroups[key] ? ' open' : '') + '><summary>📍 ' + esc(g.group) + '</summary><div class="in"><div class="grid">' +
       (g.items || []).map(function (p) {
         return '<div class="ref" data-full="' + esc(p.u) + '" data-meta="' + esc(p.t) + '"><img loading="lazy" src="' + esc(p.u) + '" alt="' + esc(p.t) + '"><span>' + esc(p.t) + '</span></div>';
       }).join('') + '</div></div></details>';
   }).join('') || '<div class="card muted">Photos of where stuff is are coming from John.</div>';
-  var vids = info.videos || [];
+  var vids = media.videos || [];
   $('#videoBox').innerHTML = vids.length ? vids.map(function (v) { return mediaHtml({ type: 'video', t: v.t, u: v.u }); }).join('') : '<p class="muted">John is sending these.</p>';
   $('#groomerBox').innerHTML = groomerHtml();
   function tel(n) { return '<a href="tel:' + esc(String(n).replace(/[^\d+]/g, '')) + '">' + esc(n) + '</a>'; }
@@ -657,9 +662,9 @@ function renderLog() {
 }
 function keyFor(t) {
   var day = todayYMD();
-  if (t === 'help') return JSON.stringify([t, server.info]);
+  if (t === 'help') return JSON.stringify([t, server.info, media]);
   if (t === 'jobs') return JSON.stringify([t, server.checks.filter(function (c) { return c.day === JOBS_DAY; }), queue]);
-  if (t === 'today') return JSON.stringify([t, day, server.checks.filter(function (c) { return c.day === day; }), server.notes.filter(function (n) { return n.day === day; }), server.photos.filter(function (p) { return p.day === day; }), server.info, queue]);
+  if (t === 'today') return JSON.stringify([t, day, server.checks.filter(function (c) { return c.day === day; }), server.notes.filter(function (n) { return n.day === day; }), server.photos.filter(function (p) { return p.day === day; }), media, queue]);
   return JSON.stringify([t, day, server.checks, server.notes, server.photos, queue]);
 }
 function render() {
@@ -758,9 +763,11 @@ $('#viewerDel').addEventListener('click', function () {
     function (e) { toast(e.offline ? 'No signal. Try again.' : 'Could not delete: ' + e.message); });
 });
 $('#signOut').addEventListener('click', function () { if (confirm('Sign out on this device?')) signOut(''); });
-document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && PIN) { refresh(); flush(); } });
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && PIN) { refresh(); flush(); loadMedia(); } });
 window.addEventListener('online', function () { if (PIN) { flush(); refresh(); } });
 setInterval(function () { if (PIN && document.visibilityState === 'visible') refresh(); }, 20000);
+setInterval(function () { if (document.visibilityState === 'visible') loadMedia(); }, 300000);
+loadMedia();
 setInterval(function () { if (PIN) renderHeader(); }, 30000);
 
 /* ---------- start ---------- */
