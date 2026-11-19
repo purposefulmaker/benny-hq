@@ -139,6 +139,20 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
 #viewer .vbar button.del{background:#b3261e;color:#fff}
 #toast{position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;font-size:15px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
+.fld{display:block;margin:10px 0;font-size:14px;color:var(--muted);font-weight:600}
+.fld input,.fld select,.inp{display:block;width:100%;margin-top:6px;font:inherit;font-size:16px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.kchip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;padding:8px 12px;font-size:14px;cursor:pointer}
+.kchip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.admItem{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.admItem .at{flex:1;min-width:0;font-size:15px}
+.yt{position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000}
+.yt iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#ask{position:fixed;inset:0;z-index:25;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.askBox{background:var(--card);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:20px 16px calc(18px + env(safe-area-inset-bottom))}
+.askBox p{font-size:19px;font-weight:700;margin:0 0 16px}
+.askBox .row{display:flex;gap:10px}
+.askBox .btn{flex:1}
 </style>
 </head>
 <body>
@@ -188,11 +202,8 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
       <p class="muted" style="margin:14px 4px 10px">One-time jobs. Tick each one when it's done.</p>
       <div id="jobsList"></div>
       <div class="card">
-        <h2>Coming later from John</h2>
-        <ul>
-          <li>📷 Pictures of things he wants organized.</li>
-          <li>🦌 When and how to clean the mounts.</li>
-        </ul>
+        <h2>From John</h2>
+        <div id="fromJohn"></div>
       </div>
     </section>
 
@@ -222,6 +233,52 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
       <details class="grp" data-grp="money"><summary>☎️ Help &amp; money</summary><div class="in"><ul id="contacts"></ul></div></details>
       <details class="grp" data-grp="keys"><summary>🔑 Keys</summary><div class="in"><p>Keys to the lodge and the house are with you. The white truck keys are here too.</p></div></details>
       <p class="muted center">Signed in on this device. <button class="linkbtn" id="signOut" type="button">Sign out</button></p>
+      <p class="center"><button class="btn small ghost" id="adminOpen" type="button">🔧 John's admin</button></p>
+    </section>
+
+    <!-- ADMIN (John only) -->
+    <section id="view-admin" class="view hidden">
+      <div id="adminLogin" class="card">
+        <h2>John's admin</h2>
+        <p class="muted">Admin code. This is not the sitter PIN.</p>
+        <input id="adminCode" class="inp" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off" aria-label="Admin code">
+        <div class="rowbtns"><button class="btn" id="adminGo" type="button">Open admin</button></div>
+        <p class="err" id="adminErr"></p>
+      </div>
+      <div id="adminPanel" class="hidden">
+        <div class="card">
+          <h2>Message for Stetson</h2>
+          <p class="muted">Shows at the top of his Today screen. Leave empty to hide it.</p>
+          <textarea id="admNote" placeholder="e.g. Organize the garage shelves this week, pictures are in Jobs."></textarea>
+          <div class="rowbtns"><button class="btn small" id="admNoteSave" type="button">Save message</button><span class="muted" id="admNoteStatus"></span></div>
+        </div>
+        <div class="card">
+          <h2>Add a video or photo</h2>
+          <label class="fld">What is it?<input id="admTitle" placeholder="e.g. How to clean Benny's eyes"></label>
+          <div class="fld">Show it with (pick any):<div class="chips" id="admKeys"></div></div>
+          <label class="fld">Photo section (photos only)
+            <select id="admGrp"><option>Benny's stuff</option><option>Cat stuff</option><option>Organize</option><option>Mounts</option><option>House</option></select>
+          </label>
+          <div class="rowbtns"><label class="btn small" for="admFile">📹 Pick a video or photo</label></div>
+          <input type="file" id="admFile" accept="video/*,image/*" class="hidden">
+          <div id="admProgress" class="hidden" style="margin-top:10px"><div class="bar"><i id="admBar"></i></div><p class="muted" id="admProgText"></p></div>
+          <p class="muted" style="margin-top:14px">Too big to upload? Put it on YouTube as unlisted and paste the link:</p>
+          <input id="admLink" class="inp" placeholder="https://youtu.be/…" inputmode="url">
+          <div class="rowbtns"><button class="btn small ghost" id="admLinkAdd" type="button">Add link</button></div>
+        </div>
+        <div class="card">
+          <h2>In the app now</h2>
+          <div id="admList"></div>
+        </div>
+        <div class="card">
+          <h2>Contacts</h2>
+          <label class="fld">Julie's phone<input id="admJulie" inputmode="tel"></label>
+          <label class="fld">Vet (name + phone)<input id="admVet"></label>
+          <label class="fld">How to reach John<input id="admJohn" placeholder="WhatsApp, number…"></label>
+          <div class="rowbtns"><button class="btn small" id="admContactsSave" type="button">Save contacts</button><span class="muted" id="admContactsStatus"></span></div>
+        </div>
+        <p class="center"><button class="linkbtn" id="admOut" type="button">Lock admin on this phone</button></p>
+      </div>
     </section>
 
     <!-- LOG -->
@@ -244,6 +301,9 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
   <img id="viewerImg" alt="">
   <div class="vbar"><span id="viewerMeta"></span><button class="del hidden" id="viewerDel" type="button">Delete</button><button id="viewerClose" type="button">Close</button></div>
 </div>
+<div id="ask" class="hidden" role="dialog" aria-modal="true" aria-labelledby="askText">
+  <div class="askBox"><p id="askText"></p><div class="row"><button class="btn ghost" id="askNo" type="button">Cancel</button><button class="btn" id="askYes" type="button">OK</button></div></div>
+</div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -262,27 +322,33 @@ var GROOMER = {
 };
 
 /* ---------- the day ---------- */
+var ADMIN_KEYS = [
+  ['walk', 'Walks'], ['dogfood', "Benny's food"], ['treats', 'Greenies'], ['wipes', 'Wipes'], ['teeth', 'Teeth'],
+  ['catfood', "Cats' food"], ['cattreats', 'Cat treats'], ['litter', 'Litter'], ['carpet', 'Carpet mat'],
+  ['trash', 'Trash / dump'], ['lodge', 'Lodge'], ['organize', 'Organize'], ['mounts', 'Mounts']
+];
+function keyLabel(k) { var f = ADMIN_KEYS.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : k; }
 var SECTIONS = [
   { name: 'Morning', items: [
-    { id: 'walk1',  ico: '🦮', t: 'Walk 1', s: '10+ min · 30 ft leash · wipe feet after' },
+    { id: 'walk1',  ico: '🦮', t: 'Walk 1', s: '10+ min · 30 ft leash · wipe feet after', help: ['walk'] },
     { id: 'bfood1', ico: '🐶', t: 'Benny breakfast', s: '2 Cesar trays, then 1 Greenie', help: ['dogfood', 'treats'] },
     { id: 'cfood1', ico: '🐈', t: 'Cats: dry food + water', s: 'Rosey & Pinky', help: ['catfood'] },
     { id: 'water',  ico: '💧', t: "Benny's water bowl full", s: 'keep it full all day, not at night' }
   ]},
   { name: 'Midday', items: [
-    { id: 'walk2',  ico: '🦮', t: 'Walk 2', s: '10+ min · wipe feet after' }
+    { id: 'walk2',  ico: '🦮', t: 'Walk 2', s: '10+ min · wipe feet after', help: ['walk'] }
   ]},
   { name: 'Afternoon', items: [
-    { id: 'walk3',  ico: '🦮', t: 'Walk 3', s: '10+ min · wipe feet after' }
+    { id: 'walk3',  ico: '🦮', t: 'Walk 3', s: '10+ min · wipe feet after', help: ['walk'] }
   ]},
   { name: 'Evening', items: [
     { id: 'bfood2', ico: '🐶', t: 'Benny dinner', s: '2 Cesar trays, then 1 Greenie', help: ['dogfood', 'treats'] },
     { id: 'cfood2', ico: '🐈', t: 'Cats: dry food + water', s: 'Rosey & Pinky', help: ['catfood'] },
-    { id: 'walk4',  ico: '🦮', t: 'Walk 4, then 1 Greenie', s: 'last walk · wipe feet after', help: ['treats'] }
+    { id: 'walk4',  ico: '🦮', t: 'Walk 4, then 1 Greenie', s: 'last walk · wipe feet after', help: ['walk', 'treats'] }
   ]},
   { name: 'Sometime today', items: [
     { id: 'wipes',  ico: '🧼', t: 'Benny wipes', s: 'mouth, eyes, feet', help: ['wipes'] },
-    { id: 'carpet', ico: '🟫', t: 'Carpet mat: 1 square', s: 'supplies in the tote · go slow' }
+    { id: 'carpet', ico: '🟫', t: 'Carpet mat: 1 square', s: 'supplies in the tote · go slow', help: ['carpet'] }
   ]}
 ];
 var EXTRAS = [
@@ -298,10 +364,10 @@ var EXTRAS = [
     on: function (i, wd) { return wd === 1 || wd === 3 || wd === 5; } }
 ];
 var JOBS = [
-  { id: 'job_trash', ico: '🗑️', t: 'Trash in front of the lodge + porch: out', s: 'NOT the kennel. NOT the paintings.' },
-  { id: 'job_dump',  ico: '🚚', t: 'Tuesday trash out, or take it all to the dump', s: "Otherwise pickup won't come for another two weeks. White truck; keys are here." },
-  { id: 'job_lodge', ico: '🧹', t: 'Lodge clean', s: 'Call Julie if it needs a real clean. The $75 is for her.' },
-  { id: 'job_move',  ico: '📦', t: "Move John's stuff into the lodge main room", s: 'Only once the lodge is clean.', needs: 'job_lodge', lockText: 'Unlocks when "Lodge clean" is ticked.' }
+  { id: 'job_trash', ico: '🗑️', t: 'Trash in front of the lodge + porch: out', s: 'NOT the kennel. NOT the paintings.', help: ['trash'] },
+  { id: 'job_dump',  ico: '🚚', t: 'Tuesday trash out, or take it all to the dump', s: "Otherwise pickup won't come for another two weeks. White truck; keys are here.", help: ['trash'] },
+  { id: 'job_lodge', ico: '🧹', t: 'Lodge clean', s: 'Call Julie if it needs a real clean. The $75 is for her.', help: ['lodge'] },
+  { id: 'job_move',  ico: '📦', t: "Move John's stuff into the lodge main room", s: 'Only once the lodge is clean.', needs: 'job_lodge', lockText: 'Unlocks when "Lodge clean" is ticked.', help: ['lodge'] }
 ];
 
 /* ---------- helpers ---------- */
@@ -362,6 +428,10 @@ var lastOk = null, netErr = false, flushing = false, flushTimer = null;
 var tab = 'today', lastKey = null, noteDirty = false, viewerId = null;
 var openDays = {}, openGroups = {}, photoCache = {};
 var media = { where: [], videos: [] };
+var johnMedia = [];
+var ADMIN = store.get('admin', null);
+var FN_URL = SB_URL + '/functions/v1/benny-admin';
+var admDirty = {};
 function loadMedia() {
   return fetch('media.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
     .then(function (m) { if (m && JSON.stringify(m) !== JSON.stringify(media)) { media = m; lastKey = null; render(); } }, function () {});
@@ -377,12 +447,27 @@ function pendingSet() { var s = {}; queue.forEach(function (q) { s[q.day + '|' +
 
 /* ---------- help media (photos + videos John sends; they live in the server info) ---------- */
 function hit(ks, keys) { return (ks || []).some(function (k) { return keys.indexOf(k) >= 0; }); }
+function allMedia() {
+  var where = (media.where || []).map(function (g) { return { group: g.group, items: (g.items || []).slice() }; });
+  var vids = (media.videos || []).map(function (v) { return { t: v.t, u: v.u, k: v.k, kind: 'video' }; });
+  (johnMedia || []).forEach(function (m) {
+    var it = { t: m.title, u: m.url, k: m.keys || [], kind: m.kind, id: m.id };
+    if (m.kind === 'photo') {
+      var gname = m.grp || 'From John';
+      var g = where.filter(function (x) { return x.group === gname; })[0];
+      if (!g) { g = { group: gname, items: [] }; where.push(g); }
+      g.items.push(it);
+    } else vids.push(it);
+  });
+  return { where: where, videos: vids };
+}
 function mediaFor(keys) {
-  var out = [];
-  (media.videos || []).forEach(function (v) { if (hit(v.k, keys)) out.push({ type: 'video', t: v.t, u: v.u }); });
-  (media.where || []).forEach(function (g) { (g.items || []).forEach(function (p) { if (hit(p.k, keys)) out.push({ type: 'img', t: p.t, u: p.u }); }); });
+  var am = allMedia(), out = [];
+  am.videos.forEach(function (v) { if (hit(v.k, keys)) out.push({ type: 'video', kind: v.kind, t: v.t, u: v.u }); });
+  am.where.forEach(function (g) { g.items.forEach(function (p) { if (hit(p.k, keys)) out.push({ type: 'img', t: p.t, u: p.u }); }); });
   return out;
 }
+function ytId(u) { var m = String(u).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/))([\w-]{11})/); return m ? m[1] : null; }
 function hasHelp(t) { return !!(t && t.help && (t.help.indexOf('groomer') >= 0 || mediaFor(t.help).length)); }
 function groomerHtml() {
   return '<p><b>' + esc(GROOMER.when) + '</b><br>' + esc(GROOMER.name) + '<br>' + esc(GROOMER.addr) + '<br>' + esc(GROOMER.phone) + '</p>' +
@@ -390,9 +475,14 @@ function groomerHtml() {
     '<a class="btn small ghost" href="tel:' + GROOMER.phone.replace(/[^\d]/g, '') + '">Call</a></div>';
 }
 function mediaHtml(mm) {
-  return mm.type === 'video'
-    ? '<div class="media"><div class="mt">' + esc(mm.t) + '</div><video controls playsinline preload="metadata" src="' + esc(mm.u) + '"></video></div>'
-    : '<div class="media"><div class="mt">' + esc(mm.t) + '</div><img src="' + esc(mm.u) + '" alt="' + esc(mm.t) + '" data-full="' + esc(mm.u) + '" data-meta="' + esc(mm.t) + '"></div>';
+  var head = '<div class="media"><div class="mt">' + esc(mm.t) + '</div>';
+  if (mm.type === 'video') {
+    var y = ytId(mm.u);
+    if (y) return head + '<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/' + y + '?rel=0&playsinline=1" title="' + esc(mm.t) + '" allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div></div>';
+    if (mm.kind === 'link') return head + '<a class="btn small" href="' + esc(mm.u) + '" target="_blank" rel="noopener">▶ Open video</a></div>';
+    return head + '<video controls playsinline preload="metadata" src="' + esc(mm.u) + '"></video></div>';
+  }
+  return head + '<img src="' + esc(mm.u) + '" alt="' + esc(mm.t) + '" data-full="' + esc(mm.u) + '" data-meta="' + esc(mm.t) + '"></div>';
 }
 function openHelp(id) {
   var t = taskById(id); if (!t || !t.help) return;
@@ -425,8 +515,11 @@ function rpc(fn, args) {
 }
 function refresh() {
   if (!PIN) return Promise.resolve();
-  return rpc('sitter_get', { p_pin: PIN, p_from: START, p_to: todayYMD() }).then(function (d) {
-    if (d) server = d; lastOk = Date.now(); netErr = false; render();
+  var pm = rpc('sitter_media', { p_pin: PIN }).catch(function () { return null; });
+  return Promise.all([rpc('sitter_get', { p_pin: PIN, p_from: START, p_to: todayYMD() }), pm]).then(function (r) {
+    if (r[0]) server = r[0];
+    if (Array.isArray(r[1])) johnMedia = r[1];
+    lastOk = Date.now(); netErr = false; render();
   }, function (e) {
     if (e.badPin) return signOut('That PIN stopped working. Check with John.');
     netErr = true; render();
@@ -456,14 +549,31 @@ function flush() {
     render();
   });
 }
-function toggle(day, task, title) {
-  var m = checkMap(), k = day + '|' + task, done = !!m[k];
-  if (done && !confirm('Untick "' + title + '"?')) return;
-  queue.push({ day: day, task: task, done: !done, at: new Date().toISOString() });
+/* in-app yes/no box (no browser popups) */
+var askResolve = null;
+function ask(text, yes, no) {
+  return new Promise(function (resolve) {
+    if (askResolve) askResolve(false);
+    askResolve = resolve;
+    $('#askText').textContent = text;
+    $('#askYes').textContent = yes || 'OK';
+    $('#askNo').textContent = no || 'Cancel';
+    $('#ask').classList.remove('hidden');
+  });
+}
+function askDone(v) { $('#ask').classList.add('hidden'); var r = askResolve; askResolve = null; if (r) r(v); }
+
+function setCheck(day, task, done) {
+  queue.push({ day: day, task: task, done: done, at: new Date().toISOString() });
   store.set('queue', queue);
-  if (!done && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+  if (done && navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
   render();
   flush();
+}
+function toggle(day, task, title) {
+  var m = checkMap(), done = !!m[day + '|' + task];
+  if (!done) { setCheck(day, task, true); return; }
+  ask('Untick "' + title + '"?', 'Untick', 'Keep it').then(function (ok) { if (ok) setCheck(day, task, false); });
 }
 
 /* ---------- photos Stetson takes ---------- */
@@ -554,6 +664,10 @@ function renderHeader() {
     $('#hTitle').textContent = 'Help';
     $('#hSub').textContent = 'Rules, where stuff is, how-to';
     setBar(null);
+  } else if (tab === 'admin') {
+    $('#hTitle').textContent = "John's admin";
+    $('#hSub').textContent = 'Videos, photos, message for Stetson';
+    setBar(null);
   } else {
     var last = lastActivity();
     $('#hTitle').textContent = 'Log';
@@ -567,6 +681,8 @@ function renderToday() {
   var nx = all.filter(function (t) { return !m[day + '|' + t.id]; })[0];
 
   var b = [];
+  var jn = (server.info || {}).john_note;
+  if (jn) b.push('📝 <b>From John:</b> ' + esc(jn).replace(/\n/g, '<br>'));
   if (addDays(day, 1) === GROOMER.day) b.push('✂️ <b>Tomorrow 10 am:</b> Benny to the groomer (Kuts n Pups). Details in Help.');
   $('#banners').innerHTML = b.map(function (x) { return '<div class="banner">' + x + '</div>'; }).join('');
 
@@ -605,18 +721,21 @@ function renderJobs() {
     var locked = j.needs && !m[JOBS_DAY + '|' + j.needs] && !m[JOBS_DAY + '|' + j.id];
     return taskBtn(JOBS_DAY, j, m, pend, { locked: locked });
   }).join('');
+  var fj = mediaFor(['organize', 'mounts']);
+  $('#fromJohn').innerHTML = fj.length ? fj.map(mediaHtml).join('')
+    : '<ul><li>📷 Pictures of things he wants organized.</li><li>🦌 When and how to clean the mounts.</li></ul><p class="muted">John will add these here.</p>';
 }
 function renderHelp() {
-  var info = server.info || {};
-  $('#whereBox').innerHTML = (media.where || []).map(function (g, gi) {
+  var info = server.info || {}, am = allMedia();
+  $('#whereBox').innerHTML = am.where.map(function (g, gi) {
     var key = 'where' + gi;
     return '<details class="grp" data-grp="' + key + '"' + (openGroups[key] ? ' open' : '') + '><summary>📍 ' + esc(g.group) + '</summary><div class="in"><div class="grid">' +
       (g.items || []).map(function (p) {
         return '<div class="ref" data-full="' + esc(p.u) + '" data-meta="' + esc(p.t) + '"><img loading="lazy" src="' + esc(p.u) + '" alt="' + esc(p.t) + '"><span>' + esc(p.t) + '</span></div>';
       }).join('') + '</div></div></details>';
   }).join('') || '<div class="card muted">Photos of where stuff is are coming from John.</div>';
-  var vids = media.videos || [];
-  $('#videoBox').innerHTML = vids.length ? vids.map(function (v) { return mediaHtml({ type: 'video', t: v.t, u: v.u }); }).join('') : '<p class="muted">John is sending these.</p>';
+  var vids = am.videos;
+  $('#videoBox').innerHTML = vids.length ? vids.map(function (v) { return mediaHtml({ type: 'video', kind: v.kind, t: v.t, u: v.u }); }).join('') : '<p class="muted">John is adding these.</p>';
   $('#groomerBox').innerHTML = groomerHtml();
   function tel(n) { return '<a href="tel:' + esc(String(n).replace(/[^\d+]/g, '')) + '">' + esc(n) + '</a>'; }
   $('#contacts').innerHTML = [
@@ -662,9 +781,10 @@ function renderLog() {
 }
 function keyFor(t) {
   var day = todayYMD();
-  if (t === 'help') return JSON.stringify([t, server.info, media]);
-  if (t === 'jobs') return JSON.stringify([t, server.checks.filter(function (c) { return c.day === JOBS_DAY; }), queue]);
-  if (t === 'today') return JSON.stringify([t, day, server.checks.filter(function (c) { return c.day === day; }), server.notes.filter(function (n) { return n.day === day; }), server.photos.filter(function (p) { return p.day === day; }), media, queue]);
+  if (t === 'help') return JSON.stringify([t, server.info, media, johnMedia]);
+  if (t === 'admin') return JSON.stringify([t, server.info, johnMedia, !!ADMIN]);
+  if (t === 'jobs') return JSON.stringify([t, server.checks.filter(function (c) { return c.day === JOBS_DAY; }), queue, media, johnMedia]);
+  if (t === 'today') return JSON.stringify([t, day, server.checks.filter(function (c) { return c.day === day; }), server.notes.filter(function (n) { return n.day === day; }), server.photos.filter(function (p) { return p.day === day; }), server.info, media, johnMedia, queue]);
   return JSON.stringify([t, day, server.checks, server.notes, server.photos, queue]);
 }
 function render() {
@@ -676,7 +796,89 @@ function render() {
   if (tab === 'today') renderToday();
   else if (tab === 'jobs') renderJobs();
   else if (tab === 'help') renderHelp();
+  else if (tab === 'admin') renderAdmin();
   else renderLog();
+}
+
+/* ---------- John's admin ---------- */
+function adminFn(body) {
+  return fetch(FN_URL, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (j) {
+      if (!r.ok) { var e = new Error(j.error || ('HTTP ' + r.status)); e.status = r.status; e.badAdmin = r.status === 403; throw e; }
+      return j;
+    });
+  }, function () { var e = new Error('no connection'); e.offline = true; throw e; });
+}
+function adminFail(e, where) {
+  if (e.badAdmin || e.badPin || e.status === 403) { ADMIN = null; store.del('admin'); lastKey = null; render(); $('#adminErr').textContent = 'Admin code stopped working. Enter it again.'; return; }
+  var msg = e.offline ? 'No connection. Try again.' : e.message;
+  if (/exceed|too large|maximum allowed size|payload/i.test(msg)) msg = 'That file is too big to upload here. Trim it, or put it on YouTube (unlisted) and paste the link below.';
+  toast((where || 'Not saved') + ': ' + msg);
+}
+function putFile(url, blob, onProg) {
+  return new Promise(function (resolve, reject) {
+    var x = new XMLHttpRequest();
+    x.open('PUT', url);
+    x.setRequestHeader('Content-Type', blob.type || 'application/octet-stream');
+    x.setRequestHeader('x-upsert', 'false');
+    x.upload.onprogress = function (ev) { if (ev.lengthComputable) onProg(ev.loaded / ev.total); };
+    x.onload = function () {
+      if (x.status >= 200 && x.status < 300) return resolve();
+      var msg = 'upload failed (' + x.status + ')';
+      try { var j = JSON.parse(x.responseText); msg = j.message || j.error || msg; } catch (e) {}
+      if (x.status === 413) msg = 'maximum allowed size exceeded';
+      reject(new Error(msg));
+    };
+    x.onerror = function () { reject(new Error('upload failed, check the connection')); };
+    x.send(blob);
+  });
+}
+function showProg(f, text) { $('#admProgress').classList.remove('hidden'); $('#admBar').style.width = Math.round(f * 100) + '%'; $('#admProgText').textContent = text; }
+function hideProg() { $('#admProgress').classList.add('hidden'); }
+function selectedKeys() { return $$('#admKeys .kchip[aria-pressed="true"]').map(function (b) { return b.dataset.k; }); }
+function resetAddForm() { $('#admTitle').value = ''; $('#admLink').value = ''; $$('#admKeys .kchip').forEach(function (b) { b.setAttribute('aria-pressed', 'false'); }); }
+function compressBlob(file) {
+  return compress(file).then(function (dataUrl) { return fetch(dataUrl).then(function (r) { return r.blob(); }); });
+}
+function adminUpload(file) {
+  var kind = /^video\//.test(file.type) ? 'video' : /^image\//.test(file.type) ? 'photo' : null;
+  if (!kind) { toast('Pick a video or a photo'); return; }
+  var title = $('#admTitle').value.trim() || (kind === 'video' ? 'Video' : 'Photo');
+  var keys = selectedKeys(), grp = kind === 'photo' ? $('#admGrp').value : null;
+  showProg(0, kind === 'photo' ? 'Shrinking the photo…' : 'Getting ready…');
+  (kind === 'photo' ? compressBlob(file) : Promise.resolve(file)).then(function (blob) {
+    return adminFn({ action: 'sign', code: ADMIN, filename: kind === 'photo' ? 'photo.jpg' : (file.name || 'video.mp4') }).then(function (s) {
+      return putFile(s.signedUrl, blob, function (f) { showProg(f, 'Uploading… ' + Math.round(f * 100) + '%'); }).then(function () {
+        showProg(1, 'Saving…');
+        return rpc('sitter_admin_media_add', { p_code: ADMIN, p_kind: kind, p_title: title, p_url: s.publicUrl, p_path: s.path, p_keys: keys, p_grp: grp });
+      });
+    });
+  }).then(function () { hideProg(); resetAddForm(); toast('Added ✓ Stetson will see it.'); return refresh(); },
+         function (e) { hideProg(); adminFail(e, 'Not added'); });
+}
+function renderAdmin() {
+  var logged = !!ADMIN;
+  $('#adminLogin').classList.toggle('hidden', logged);
+  $('#adminPanel').classList.toggle('hidden', !logged);
+  if (!logged) return;
+  var info = server.info || {};
+  if (!$('#admKeys').children.length) {
+    $('#admKeys').innerHTML = ADMIN_KEYS.map(function (k) { return '<button type="button" class="kchip" aria-pressed="false" data-k="' + k[0] + '">' + esc(k[1]) + '</button>'; }).join('');
+  }
+  [['john_note', '#admNote'], ['julie_phone', '#admJulie'], ['vet', '#admVet'], ['john_contact', '#admJohn']].forEach(function (p) {
+    var el = $(p[1]);
+    if (!admDirty[p[0]] && document.activeElement !== el) el.value = info[p[0]] || '';
+  });
+  $('#admList').innerHTML = johnMedia.length ? johnMedia.map(function (m) {
+    var icon = m.kind === 'photo' ? '🖼️' : m.kind === 'video' ? '🎬' : '🔗';
+    var where = (m.keys || []).map(keyLabel).join(', ') || 'Help tab only';
+    return '<div class="admItem"><span>' + icon + '</span><span class="at"><b>' + esc(m.title) + '</b><br><span class="muted">' + esc(where) + (m.kind === 'photo' && m.grp ? ' · ' + esc(m.grp) : '') + '</span></span>' +
+      '<button class="btn small ghost" type="button" data-adel="' + m.id + '">Remove</button></div>';
+  }).join('') : '<p class="muted">Nothing added yet. Your pantry photos are built in and always show.</p>';
 }
 function setTab(t) {
   tab = t; lastKey = null;
@@ -696,11 +898,23 @@ function tryPin(pin) {
   return rpc('sitter_get', { p_pin: pin, p_from: START, p_to: todayYMD() }).then(function (d) {
     PIN = pin; store.set('pin', pin); server = d || server; lastOk = Date.now(); netErr = false;
     go.disabled = false; go.textContent = 'Open';
-    showApp(); flush();
+    showApp(); flush(); refresh();
   }, function (e) {
-    go.disabled = false; go.textContent = 'Open';
-    showPin();
-    $('#pinErr').textContent = e.badPin ? "That PIN didn't work. Check with John." : e.offline ? 'No connection. Check the WiFi and try again.' : 'Something went wrong: ' + e.message;
+    if (!e.badPin) {
+      go.disabled = false; go.textContent = 'Open'; showPin();
+      $('#pinErr').textContent = e.offline ? 'No connection. Check the WiFi and try again.' : 'Something went wrong: ' + e.message;
+      return;
+    }
+    // not the app PIN: maybe it's John's admin code
+    return rpc('sitter_admin_pin', { p_code: pin }).then(function (appPin) {
+      PIN = String(appPin); store.set('pin', PIN);
+      ADMIN = pin; store.set('admin', pin);
+      go.disabled = false; go.textContent = 'Open';
+      tab = 'admin'; showApp(); refresh();
+    }, function () {
+      go.disabled = false; go.textContent = 'Open'; showPin();
+      $('#pinErr').textContent = "That PIN didn't work. Check with John.";
+    });
   });
 }
 function parseHash() {
@@ -708,7 +922,7 @@ function parseHash() {
   try { h = decodeURIComponent(location.hash.replace(/^#/, '')); } catch (e) {}
   h.split('&').forEach(function (part) {
     if (part.indexOf('pin=') === 0) out.pin = part.slice(4).replace(/\D/g, '');
-    else if (['today', 'jobs', 'help', 'log'].indexOf(part) >= 0) out.tab = part;
+    else if (['today', 'jobs', 'help', 'log', 'admin'].indexOf(part) >= 0) out.tab = part;
   });
   if (out.pin) { try { history.replaceState(null, '', out.tab ? '#' + out.tab : location.pathname); } catch (e) {} }
   return out;
@@ -722,7 +936,22 @@ function maybeHint() {
 }
 
 /* ---------- events ---------- */
+function adminDelete(id) {
+  var m = johnMedia.filter(function (x) { return x.id === id; })[0];
+  ask('Remove "' + (m ? m.title : 'this') + '" from the app?', 'Remove', 'Keep it').then(function (ok) {
+    if (!ok) return;
+    rpc('sitter_admin_media_delete', { p_code: ADMIN, p_id: id }).then(function (path) {
+      if (path) return adminFn({ action: 'remove', code: ADMIN, path: path }).catch(function () {});
+    }).then(function () { toast('Removed'); return refresh(); }, function (e) { adminFail(e, 'Not removed'); });
+  });
+}
+function setInfo(key, val) { return rpc('sitter_admin_set_info', { p_code: ADMIN, p_key: key, p_value: val }); }
+
 document.addEventListener('click', function (e) {
+  var kc = e.target.closest('.kchip');
+  if (kc) { kc.setAttribute('aria-pressed', kc.getAttribute('aria-pressed') === 'true' ? 'false' : 'true'); return; }
+  var ad = e.target.closest('[data-adel]');
+  if (ad) { adminDelete(Number(ad.dataset.adel)); return; }
   var h = e.target.closest('[data-help]');
   if (h) { e.preventDefault(); openHelp(h.dataset.help); return; }
   if (e.target.closest('[data-close-sheet]') || e.target.id === 'sheet') { closeSheet(); return; }
@@ -757,12 +986,52 @@ $('#noteSave').addEventListener('click', function () {
 $('#photoIn').addEventListener('change', function (e) { var f = e.target.files && e.target.files[0]; if (f) addPhoto(f); e.target.value = ''; });
 $('#viewerClose').addEventListener('click', closeViewer);
 $('#viewerDel').addEventListener('click', function () {
-  if (viewerId == null || !confirm('Delete this photo?')) return;
+  if (viewerId == null) return;
   var id = viewerId;
-  rpc('sitter_photo_delete', { p_pin: PIN, p_id: id }).then(function () { delete photoCache[id]; closeViewer(); toast('Photo deleted'); refresh(); },
-    function (e) { toast(e.offline ? 'No signal. Try again.' : 'Could not delete: ' + e.message); });
+  ask('Delete this photo?', 'Delete', 'Keep it').then(function (ok) {
+    if (!ok) return;
+    rpc('sitter_photo_delete', { p_pin: PIN, p_id: id }).then(function () { delete photoCache[id]; closeViewer(); toast('Photo deleted'); refresh(); },
+      function (e) { toast(e.offline ? 'No signal. Try again.' : 'Could not delete: ' + e.message); });
+  });
 });
-$('#signOut').addEventListener('click', function () { if (confirm('Sign out on this device?')) signOut(''); });
+$('#signOut').addEventListener('click', function () { ask('Sign out on this device?', 'Sign out', 'Cancel').then(function (ok) { if (ok) signOut(''); }); });
+$('#askYes').addEventListener('click', function () { askDone(true); });
+$('#askNo').addEventListener('click', function () { askDone(false); });
+$('#ask').addEventListener('click', function (e) { if (e.target.id === 'ask') askDone(false); });
+$('#adminOpen').addEventListener('click', function () { setTab('admin'); });
+$('#adminGo').addEventListener('click', function () {
+  var code = $('#adminCode').value.replace(/\D/g, ''); if (!code) return;
+  var go = $('#adminGo'); $('#adminErr').textContent = ''; go.disabled = true;
+  rpc('sitter_admin_check', { p_code: code }).then(function (ok) {
+    go.disabled = false;
+    if (ok === true) { ADMIN = code; store.set('admin', code); $('#adminCode').value = ''; lastKey = null; render(); }
+    else $('#adminErr').textContent = "That code didn't work.";
+  }, function (e) { go.disabled = false; $('#adminErr').textContent = e.offline ? 'No connection. Try again.' : 'Admin is not ready yet (' + e.message + ').'; });
+});
+[['john_note', '#admNote'], ['julie_phone', '#admJulie'], ['vet', '#admVet'], ['john_contact', '#admJohn']].forEach(function (p) {
+  $(p[1]).addEventListener('input', function () { admDirty[p[0]] = true; });
+});
+$('#admNoteSave').addEventListener('click', function () {
+  $('#admNoteStatus').textContent = 'Saving…';
+  setInfo('john_note', $('#admNote').value).then(function () { admDirty.john_note = false; $('#admNoteStatus').textContent = 'Saved ✓'; return refresh(); },
+    function (e) { $('#admNoteStatus').textContent = ''; adminFail(e); });
+});
+$('#admContactsSave').addEventListener('click', function () {
+  $('#admContactsStatus').textContent = 'Saving…';
+  setInfo('julie_phone', $('#admJulie').value)
+    .then(function () { return setInfo('vet', $('#admVet').value); })
+    .then(function () { return setInfo('john_contact', $('#admJohn').value); })
+    .then(function () { admDirty.julie_phone = admDirty.vet = admDirty.john_contact = false; $('#admContactsStatus').textContent = 'Saved ✓'; return refresh(); },
+      function (e) { $('#admContactsStatus').textContent = ''; adminFail(e); });
+});
+$('#admFile').addEventListener('change', function (e) { var f = e.target.files && e.target.files[0]; if (f) adminUpload(f); e.target.value = ''; });
+$('#admLinkAdd').addEventListener('click', function () {
+  var u = $('#admLink').value.trim();
+  if (!/^https:\/\//i.test(u)) { toast('Paste a link that starts with https://'); return; }
+  rpc('sitter_admin_media_add', { p_code: ADMIN, p_kind: 'link', p_title: $('#admTitle').value.trim() || 'Video', p_url: u, p_path: null, p_keys: selectedKeys(), p_grp: null })
+    .then(function () { resetAddForm(); toast('Added ✓ Stetson will see it.'); return refresh(); }, function (e) { adminFail(e, 'Not added'); });
+});
+$('#admOut').addEventListener('click', function () { ADMIN = null; store.del('admin'); lastKey = null; render(); });
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && PIN) { refresh(); flush(); loadMedia(); } });
 window.addEventListener('online', function () { if (PIN) { flush(); refresh(); } });
 setInterval(function () { if (PIN && document.visibilityState === 'visible') refresh(); }, 20000);
