@@ -78,6 +78,7 @@ main{padding:10px 14px calc(92px + env(safe-area-inset-bottom));max-width:640px;
 .task.locked{opacity:.55;cursor:not-allowed}
 .chip{display:inline-block;margin-top:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--ink);background:var(--bg)}
 .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--amberbg);color:var(--amber);vertical-align:2px;margin-left:4px;text-transform:uppercase;letter-spacing:.04em}
+.pill.away{background:var(--line);color:var(--muted)}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}
 .card h2{font-size:17px;margin:0 0 8px}
@@ -179,13 +180,13 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
     <!-- TODAY -->
     <section id="view-today" class="view">
       <div id="installHint" class="hint hidden"><span id="hintText"></span><button id="hintX" type="button" aria-label="Dismiss">✕</button></div>
-      <div class="rule">🦮 30 ft leash only. Never off leash. Wipe his feet every time he comes in.</div>
+      <div class="rule" id="ruleBenny">🦮 30 ft leash only. Never off leash. Wipe his feet every time he comes in.</div>
       <div id="banners"></div>
       <div id="next" class="next"></div>
       <div id="todayList"></div>
       <div class="card">
         <h2>Note for John</h2>
-        <textarea id="note" placeholder="Anything John should know? Benny not eating, low on food, anything weird."></textarea>
+        <textarea id="note" placeholder="Anything John should know? Low on food, a cat acting off, anything weird."></textarea>
         <div class="rowbtns"><button class="btn small" id="noteSave" type="button">Save note</button><span id="noteStatus" class="muted"></span></div>
       </div>
       <div class="card">
@@ -193,7 +194,7 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
         <div id="todayThumbs" class="thumbs flush hidden"></div>
         <label class="btn small ghost" for="photoIn">📷 Add a photo</label>
         <input id="photoIn" type="file" accept="image/*" class="hidden">
-        <p class="muted">Optional. Benny, the carpet square, anything John should see.</p>
+        <p class="muted">Optional. The animals, the carpet square, anything John should see.</p>
       </div>
     </section>
 
@@ -251,6 +252,11 @@ nav.tabs button[aria-current="page"]{color:var(--ink);font-weight:700}
         <div class="rowbtns" style="margin:12px 0 4px">
           <button class="btn small" id="admToToday" type="button">✅ Stetson's view</button>
           <button class="btn small ghost" id="admSignOut" type="button">🔒 Sign out</button>
+        </div>
+        <div class="card">
+          <h2>Benny</h2>
+          <p id="admBennyState" style="margin:0 0 4px"></p>
+          <div class="rowbtns"><button class="btn small" id="admBennyBtn" type="button">…</button><span class="muted" id="admBennyStatus"></span></div>
         </div>
         <div class="card">
           <h2>Message for Stetson</h2>
@@ -376,6 +382,9 @@ var JOBS = [
   { id: 'job_lodge', ico: '🧹', t: 'Lodge clean', s: 'Call Julie if it needs a real clean. The $75 is for her.', help: ['lodge'] },
   { id: 'job_move',  ico: '📦', t: "Move John's stuff into the lodge main room", s: 'Only once the lodge is clean.', needs: 'job_lodge', lockText: 'Unlocks when "Lodge clean" is ticked.', help: ['lodge'] }
 ];
+/* Benny's own jobs. While he's away (John flips it in admin) they come off the list and the Log,
+   unless one was already ticked that day. Away stretches live in server.info.benny_away_periods. */
+var BENNY_IDS = ['walk1', 'walk2', 'walk3', 'walk4', 'bfood1', 'bfood2', 'water', 'wipes', 'teeth', 'groomer'];
 
 /* ---------- helpers ---------- */
 function $(s, r) { return (r || document).querySelector(s); }
@@ -409,17 +418,23 @@ function ago(iso) {
 var toastTimer;
 function toast(msg) { var t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2600); }
 
-function sectionsFor(ymd) {
-  var i = dayIndex(ymd), wd = weekday(ymd);
+function awayPeriods() { var p = (server.info || {}).benny_away_periods; return Array.isArray(p) ? p : []; }
+function bennyAway(ymd) { return awayPeriods().some(function (p) { return p && p.from && ymd >= p.from && (!p.to || ymd <= p.to); }); }
+function bennyAwayNow() { return (server.info || {}).benny_away === true; }
+function sectionsFor(ymd, m) {
+  var i = dayIndex(ymd), wd = weekday(ymd), away = bennyAway(ymd);
+  if (away && !m) m = checkMap();
   var ex = EXTRAS.filter(function (x) { return x.on(i, wd, ymd); });
   return SECTIONS.map(function (sec) {
     var add = ex.filter(function (x) { return (x.sec || 'Sometime today') === sec.name; })
       .map(function (x) { return { id: x.id, ico: x.ico, t: x.t, s: x.s, help: x.help, first: x.first, extra: true }; });
     var first = add.filter(function (x) { return x.first; }), rest = add.filter(function (x) { return !x.first; });
-    return { name: sec.name, items: first.concat(sec.items, rest) };
-  });
+    var items = first.concat(sec.items, rest);
+    if (away) items = items.filter(function (t) { return BENNY_IDS.indexOf(t.id) < 0 || m[ymd + '|' + t.id]; });
+    return { name: sec.name, items: items };
+  }).filter(function (sec) { return sec.items.length; });
 }
-function tasksFor(ymd) { var out = []; sectionsFor(ymd).forEach(function (s) { out = out.concat(s.items); }); return out; }
+function tasksFor(ymd, m) { var out = []; sectionsFor(ymd, m).forEach(function (s) { out = out.concat(s.items); }); return out; }
 function taskById(id) {
   var all = JOBS.slice();
   SECTIONS.forEach(function (s) { all = all.concat(s.items); });
@@ -658,7 +673,7 @@ function renderHeader() {
   else if (lastOk) { sync.className = 'sync ok'; sync.textContent = 'Live'; }
   else { sync.className = 'sync'; sync.textContent = 'Connecting…'; }
   if (tab === 'today') {
-    var all = tasksFor(day), done = all.filter(function (t) { return m[day + '|' + t.id]; }).length;
+    var all = tasksFor(day, m), done = all.filter(function (t) { return m[day + '|' + t.id]; }).length;
     $('#hTitle').textContent = dayLabel(day, true);
     $('#hSub').textContent = (done === all.length ? 'All done today 🎉' : done + ' of ' + all.length + ' done') + ' · ranch time ' + timeOf(new Date().toISOString());
     setBar(done / all.length);
@@ -673,7 +688,7 @@ function renderHeader() {
     setBar(null);
   } else if (tab === 'admin') {
     $('#hTitle').textContent = "John's admin";
-    $('#hSub').textContent = 'Videos, photos, message for Stetson';
+    $('#hSub').textContent = 'Benny switch, videos, message for Stetson';
     setBar(null);
   } else {
     var last = lastActivity();
@@ -684,13 +699,15 @@ function renderHeader() {
 }
 function renderToday() {
   var day = todayYMD(), m = checkMap(), pend = pendingSet();
-  var secs = sectionsFor(day), all = tasksFor(day);
+  var secs = sectionsFor(day, m), all = tasksFor(day, m), away = bennyAway(day);
   var nx = all.filter(function (t) { return !m[day + '|' + t.id]; })[0];
 
+  $('#ruleBenny').classList.toggle('hidden', away);
   var b = [];
+  if (away) b.push("🐾 <b>Benny's away right now.</b> No walks, food or wipes for him. Just Rosey, Pinky and the place.");
   var jn = (server.info || {}).john_note;
   if (jn) b.push('📝 <b>From John:</b> ' + esc(jn).replace(/\n/g, '<br>'));
-  if (addDays(day, 1) === GROOMER.day) b.push('✂️ <b>Tomorrow 10 am:</b> Benny to the groomer (Kuts n Pups). Details in Help.');
+  if (!away && addDays(day, 1) === GROOMER.day) b.push('✂️ <b>Tomorrow 10 am:</b> Benny to the groomer (Kuts n Pups). Details in Help.');
   $('#banners').innerHTML = b.map(function (x) { return '<div class="banner">' + x + '</div>'; }).join('');
 
   var nb = $('#next');
@@ -766,7 +783,7 @@ function renderLog() {
   var days = []; for (var d = today; d >= START; d = addDays(d, -1)) days.push(d);
   if (!days.length) { $('#logList').innerHTML = '<p class="muted center">The log starts ' + esc(dayLabel(START, true)) + '.</p>'; return; }
   $('#logList').innerHTML = days.map(function (d) {
-    var tasks = tasksFor(d), past = d < today;
+    var tasks = tasksFor(d, m), past = d < today;
     var done = tasks.filter(function (t) { return m[d + '|' + t.id]; });
     var missed = tasks.length - done.length;
     var status = !missed ? '<span class="st ok">✓ All ' + tasks.length + ' done</span>'
@@ -779,6 +796,7 @@ function renderLog() {
       return '<li class="' + (at ? 'ok' : past ? 'bad' : 'todo') + '"><span>' + (at ? '✓' : past ? '✗' : '○') + '</span><span class="lt">' + esc(t.t) + '</span><span class="lw">' + (at ? esc(timeOf(at)) : past ? 'missed' : '') + '</span></li>';
     }).join('');
     return '<details class="day" data-day="' + d + '"' + (open ? ' open' : '') + '><summary><span class="dl">' + esc(dayLabel(d)) + (d === today ? ' · today' : '') + '</span>' + status +
+      (bennyAway(d) ? ' <span class="pill away">Benny away</span>' : '') +
       (n && n.note ? ' <span class="pill">note</span>' : '') + (ph.length ? ' <span class="pill">📷 ' + ph.length + '</span>' : '') + '</summary>' +
       (n && n.note ? '<div class="note">“' + esc(n.note) + '”<div class="nt">' + esc(timeOf(n.at)) + ' ranch time</div></div>' : '') +
       (ph.length ? '<div class="thumbs">' + ph.map(function (p) { return '<img class="thumb" data-photo="' + p.id + '" data-meta="' + esc(dayLabel(d) + ', ' + timeOf(p.at)) + '" alt="Photo">'; }).join('') + '</div>' : '') +
@@ -792,7 +810,7 @@ function keyFor(t) {
   if (t === 'admin') return JSON.stringify([t, server.info, johnMedia, !!ADMIN]);
   if (t === 'jobs') return JSON.stringify([t, server.checks.filter(function (c) { return c.day === JOBS_DAY; }), queue, media, johnMedia]);
   if (t === 'today') return JSON.stringify([t, day, server.checks.filter(function (c) { return c.day === day; }), server.notes.filter(function (n) { return n.day === day; }), server.photos.filter(function (p) { return p.day === day; }), server.info, media, johnMedia, queue]);
-  return JSON.stringify([t, day, server.checks, server.notes, server.photos, queue]);
+  return JSON.stringify([t, day, server.checks, server.notes, server.photos, queue, awayPeriods()]);
 }
 function render() {
   if (!PIN) return;
@@ -873,6 +891,11 @@ function renderAdmin() {
   $('#adminPanel').classList.toggle('hidden', !logged);
   if (!logged) return;
   var info = server.info || {};
+  var away = bennyAwayNow(), ps = awayPeriods(), last = ps[ps.length - 1];
+  $('#admBennyState').innerHTML = away
+    ? '🐾 <b>Away</b>' + (last && last.from && !last.to ? ' since ' + esc(dayLabel(last.from)) : '') + '. Stetson only sees the cats and the place, and your nightly text leaves Benny out.'
+    : "🏡 <b>Home.</b> His walks, food, water and wipes are on Stetson's list.";
+  $('#admBennyBtn').textContent = away ? "Benny's home: put his jobs back" : "Benny's away: take his jobs off";
   if (!$('#admKeys').children.length) {
     $('#admKeys').innerHTML = ADMIN_KEYS.map(function (k) { return '<button type="button" class="kchip" aria-pressed="false" data-k="' + k[0] + '">' + esc(k[1]) + '</button>'; }).join('');
   }
@@ -1041,6 +1064,21 @@ $('#admContactsSave').addEventListener('click', function () {
     .then(function () { return setInfo('john_contact', $('#admJohn').value); })
     .then(function () { admDirty.julie_phone = admDirty.vet = admDirty.john_contact = false; $('#admContactsStatus').textContent = 'Saved ✓'; return refresh(); },
       function (e) { $('#admContactsStatus').textContent = ''; adminFail(e); });
+});
+$('#admBennyBtn').addEventListener('click', function () {
+  var away = bennyAwayNow();
+  ask(away ? "Put Benny's walks, food, water and wipes back on Stetson's list, starting today?"
+           : "Take Benny's walks, food, water and wipes off Stetson's list, starting today?",
+      away ? 'Put them back' : 'Take them off', 'Cancel').then(function (ok) {
+    if (!ok) return;
+    $('#admBennyStatus').textContent = 'Saving…';
+    rpc('sitter_admin_benny', { p_code: ADMIN, p_away: !away }).then(function (r) {
+      $('#admBennyStatus').textContent = '';
+      if (r) { server.info = server.info || {}; server.info.benny_away = r.benny_away; server.info.benny_away_periods = r.benny_away_periods; lastKey = null; render(); }
+      toast(away ? "Benny's jobs are back on the list" : "Benny's jobs are off the list");
+      return refresh();
+    }, function (e) { $('#admBennyStatus').textContent = ''; adminFail(e); });
+  });
 });
 $('#admFile').addEventListener('change', function (e) { var f = e.target.files && e.target.files[0]; if (f) adminUpload(f); e.target.value = ''; });
 $('#admLinkAdd').addEventListener('click', function () {
